@@ -9,7 +9,7 @@ import Foundation
 
 public class LaunchSPMDemo {
     
-    func launchView () {
-        print("Hello SPM Framework")
+    public func launchView () {
+        print("Hello SPM Framework!!")
     }
 }
