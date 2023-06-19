@@ -6,6 +6,20 @@
 	objectVersion = 56;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		9E17A88A2A3CEDE8005F67BE /* AggregatedFramework */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 9E17A88B2A3CEDE8005F67BE /* Build configuration list for PBXAggregateTarget "AggregatedFramework" */;
+			buildPhases = (
+				9E17A88E2A3CEDFC005F67BE /* Run Script */,
+			);
+			dependencies = (
+			);
+			name = AggregatedFramework;
+			productName = AggregatedFramework;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		9EBA567A2A3383800097FDA9 /* SPMDemoFramework.docc in Sources */ = {isa = PBXBuildFile; fileRef = 9EBA56792A3383800097FDA9 /* SPMDemoFramework.docc */; };
 		9EBA56802A3383810097FDA9 /* SPMDemoFramework.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9EBA56752A3383800097FDA9 /* SPMDemoFramework.framework */; };
@@ -116,6 +130,8 @@
 			dependencies = (
 			);
 			name = SPMDemoFramework;
+			packageProductDependencies = (
+			);
 			productName = SPMDemoFramework;
 			productReference = 9EBA56752A3383800097FDA9 /* SPMDemoFramework.framework */;
 			productType = "com.apple.product-type.framework";
@@ -148,6 +164,9 @@
 				LastSwiftUpdateCheck = 1420;
 				LastUpgradeCheck = 1420;
 				TargetAttributes = {
+					9E17A88A2A3CEDE8005F67BE = {
+						CreatedOnToolsVersion = 14.2;
+					};
 					9EBA56742A3383800097FDA9 = {
 						CreatedOnToolsVersion = 14.2;
 					};
@@ -165,12 +184,15 @@
 				Base,
 			);
 			mainGroup = 9EBA566B2A3383800097FDA9;
+			packageReferences = (
+			);
 			productRefGroup = 9EBA56762A3383800097FDA9 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				9EBA56742A3383800097FDA9 /* SPMDemoFramework */,
 				9EBA567E2A3383810097FDA9 /* SPMDemoFrameworkTests */,
+				9E17A88A2A3CEDE8005F67BE /* AggregatedFramework */,
 			);
 		};
 /* End PBXProject section */
@@ -191,6 +213,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		9E17A88E2A3CEDFC005F67BE /* Run Script */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Run Script";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\n#! /bin/sh -e\n# This script demonstrates archive and create action on frameworks and libraries\n# Based on script by @author Boris Bielik\n\nset -x\n\ncurrent_dir=$(pwd)\n\n# Release dir path\nOUTPUT_DIR_PATH=\"${PROJECT_DIR}/XCFramework\"\n\nfunction archivePathSimulator {\n  local DIR=${OUTPUT_DIR_PATH}/archives/\"${1}-SIMULATOR\"\n  echo \"${DIR}\"\n}\n\nfunction archivePathDevice {\n  local DIR=${OUTPUT_DIR_PATH}/archives/\"${1}-DEVICE\"\n  echo \"${DIR}\"\n}\n\n# Archive takes 3 params\n#\n# 1st == SCHEME\n# 2nd == destination\n# 3rd == archivePath\nfunction archive {\n    echo \"▸ Starts archiving the scheme: ${1} for destination: ${2};\\n▸ Archive path: ${3}.xcarchive\"\n    xcodebuild clean archive \\\n    -project \"${PROJECT_NAME}.xcodeproj\" \\\n    -scheme ${1} \\\n    -configuration ${CONFIGURATION} \\\n    -destination \"${2}\" \\\n    -archivePath \"${3}\" \\\n    SKIP_INSTALL=NO \\\n    OBJROOT=\"${OBJROOT}/DependentBuilds\" \\\n    BUILD_LIBRARY_FOR_DISTRIBUTION=YES \n}\n\n# Builds archive for iOS simulator & device\nfunction buildArchive {\n  SCHEME=${1}\n\n  archive $SCHEME \"generic/platform=iOS Simulator\" $(archivePathSimulator $SCHEME)\n  archive $SCHEME \"generic/platform=iOS\" $(archivePathDevice $SCHEME)\n}\n\n# Creates xc framework\nfunction createXCFramework {\n  FRAMEWORK_ARCHIVE_PATH_POSTFIX=\".xcarchive/Products/Library/Frameworks\"\n  FRAMEWORK_SIMULATOR_DIR=\"$(archivePathSimulator $1)${FRAMEWORK_ARCHIVE_PATH_POSTFIX}\"\n  FRAMEWORK_DEVICE_DIR=\"$(archivePathDevice $1)${FRAMEWORK_ARCHIVE_PATH_POSTFIX}\"\n\n  xcodebuild -create-xcframework \\\n            -framework ${FRAMEWORK_SIMULATOR_DIR}/${1}.framework \\\n            -framework ${FRAMEWORK_DEVICE_DIR}/${1}.framework \\\n            -output ${OUTPUT_DIR_PATH}/xcframeworks/${1}.xcframework\n}\n\n### Static Libraries cant be turned into frameworks\nfunction createXCFrameworkForStaticLibrary {\n\n  LIBRARY_ARCHIVE_PATH_POSTFIX=\".xcarchive/Products/usr/local/lib\"\n  LIBRARY_SIMULATOR_DIR=\"$(archivePathSimulator $1)${LIBRARY_ARCHIVE_PATH_POSTFIX}\"\n  LIBRARY_DEVICE_DIR=\"$(archivePathDevice $1)${LIBRARY_ARCHIVE_PATH_POSTFIX}\"\n\n  xcodebuild -create-xcframework \\\n            -library ${LIBRARY_SIMULATOR_DIR}/libStaticLibrary.a \\\n            -library ${LIBRARY_DEVICE_DIR}/libStaticLibrary.a \\\n            -output ${OUTPUT_DIR_PATH}/xcframeworks/${1}.xcframework\n}\n\n# Creates xc framework zip\nfunction createXCFrameworkZip {\n    buildNumber=\"$CURRENT_PROJECT_VERSION\"\n    rm *.zip\n\n    cd \"${PROJECT_DIR}/XCFramework/xcframeworks/\" || exit 1\n    zip -r \"${PROJECT_DIR}/${1}-${buildNumber}.xcframework.zip\" ${1}.xcframework\n    cd ..\n    cd ..\n}\n\n# Creates xc framework zip checksum\n\n\necho \"#####################\"\necho \"▸ Cleaning the dir: ${OUTPUT_DIR_PATH}\"\nrm -rf $OUTPUT_DIR_PATH\n\n#### Static Library ####\n#LIBRARY=\"${PROJECT_NAME}\"\n\n#echo \"▸ Archive $LIBRARY\"\n#buildArchive ${LIBRARY}\n\n#echo \"▸ Create $FRAMEWORK.xcframework\"\n#createXCFrameworkForStaticLibrary ${LIBRARY}\n\n#### Dynamic Framework ####\n\nDYNAMIC_FRAMEWORK=\"${PROJECT_NAME}\"\n\necho \"▸ Archive $DYNAMIC_FRAMEWORK\"\nbuildArchive ${DYNAMIC_FRAMEWORK}\n\necho \"▸ Create $DYNAMIC_FRAMEWORK.xcframework\"\ncreateXCFramework ${DYNAMIC_FRAMEWORK}\n\necho \"▸ Create $DYNAMIC_FRAMEWORK.xcframework\"\ncreateXCFrameworkZip ${DYNAMIC_FRAMEWORK}\n\necho \"▸ Create $DYNAMIC_FRAMEWORK.xcframework\"\n\nxcframework_zip=${PROJECT_DIR}/\"SPMDemoFramework${1}-${buildNumber}.xcframework.zip\"\n\nNEW_CHECKSUM=$(swift package compute-checksum ${xcframework_zip})\necho \"Checksum: $NEW_CHECKSUM\"\noutput_file=\"checksum.txt\"\necho \"SPMDemoFramework-${buildNumber}= ${NEW_CHECKSUM}\" > \"${PROJECT_DIR}/$output_file\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9EBA56712A3383800097FDA9 /* Sources */ = {
@@ -221,6 +264,24 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		9E17A88C2A3CEDE8005F67BE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = UA26S9FATV;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		9E17A88D2A3CEDE8005F67BE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = UA26S9FATV;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		9EBA56872A3383810097FDA9 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -254,7 +315,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -317,7 +378,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -346,7 +407,7 @@
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = UA26S9FATV;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -375,7 +436,7 @@
 			buildSettings = {
 				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2.0.0;
 				DEFINES_MODULE = YES;
 				DEVELOPMENT_TEAM = UA26S9FATV;
 				DYLIB_COMPATIBILITY_VERSION = 1;
@@ -436,6 +497,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		9E17A88B2A3CEDE8005F67BE /* Build configuration list for PBXAggregateTarget "AggregatedFramework" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9E17A88C2A3CEDE8005F67BE /* Debug */,
+				9E17A88D2A3CEDE8005F67BE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9EBA566F2A3383800097FDA9 /* Build configuration list for PBXProject "SPMDemoFramework" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
